@@ -1,0 +1,17 @@
+name: responsive_layout
+description: A new Flutter package project.
+version: 1.0.0-nullsafety.0
+repository: https://github.com/olmps/strict
+issue_tracker: https://github.com/olmps/strict/issues
+
+environment:
+  sdk: ">=2.12.0-0 <3.0.0"
+  flutter: ">=1.17.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
