@@ -12,8 +12,9 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final layout = context.layout;
     return Scaffold(
-      appBar: context.isTabletOrSmaller ? AppBar(
+      appBar: layout.isTabletOrSmaller ? AppBar(
         title: Text('Splitted Home'),
       ) : null,
       body: Padding(
@@ -21,7 +22,7 @@ class HomePage extends StatelessWidget {
         child: Container(
           constraints: BoxConstraints.expand(),
           child: SingleChildScrollView(
-            child: context.layoutValue(
+            child: layout.value(
               tablet: _HomeContents(children: _randomMockedChildren),
               phone: _CompactHomeContents(children: _randomMockedChildren),
             ),

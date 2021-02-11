@@ -2,74 +2,36 @@ import 'package:flutter/widgets.dart';
 import 'package:responsive_layout/responsive_layout.dart';
 
 import 'src/layout_resolver.dart';
-import 'src/utilities.dart';
-
 
 export 'responsive_layout.dart';
-
-// extension LayoutMetadataCtx on BuildContext {
-//   LayoutMetadata get layoutMetadata => watch<LayoutMetadata>();
-// }
-
-// typedef LayoutValue<T> = T Function(BuildContext context);
-
-
 
 enum CommonBreakpoint {
   desktop, tablet, phone, tinyHardware
 }
 
-
+@immutable
 class CommonLayout extends LayoutResolver<CommonBreakpoint> {
-  CommonLayout({
-    this.desktop = 769,
-    this.tablet = 481,
-    this.phone = 321
-  }) {
-    if (desktop <= tablet || desktop <= phone) {
-      throw 'tablet (tablet) and/or phone (phone) size was greater than desktop size (desktop)';
-    }
+  CommonLayout(double size, {
+    int desktop = 769,
+    int tablet = 481,
+    int phone = 321
+  }): super(size: size, breakpoints: [Breakpoint(desktop, value: CommonBreakpoint.desktop), Breakpoint(tablet, value: CommonBreakpoint.tablet), Breakpoint(phone, value: CommonBreakpoint.phone), Breakpoint(null, value: CommonBreakpoint.tinyHardware),]);
 
-    if (tablet <= phone) {
-      throw 'phone size (phone) was greater than tablet size (tablet)';
-    }
-  }
+  // Helpers
 
-  final int desktop;
-  final int tablet;
-  final int phone;
-
-  @override
-  CommonBreakpoint resolveBreakpoint(double size) {
-    if (size < phone) {
-      return CommonBreakpoint.tinyHardware;
-    } else if (size < tablet) {
-      return CommonBreakpoint.phone;
-    } else if (size < desktop) {
-      return CommonBreakpoint.tablet;
-    }
-
-    return CommonBreakpoint.desktop;
-  }
-}
-
-extension CommonLayoutValue on BuildContext {
-  CommonLayout get commonLayout => LayoutResolverWidget.of(this).resolver as CommonLayout;
-  CommonBreakpoint get breakpoint => commonLayout.resolveBreakpoint(deviceWidth);
-
-  bool get isTinyHardware => breakpoint == CommonBreakpoint.tinyHardware;
+  bool get isTinyHardware => matchesValue(CommonBreakpoint.tinyHardware);
   
-  bool get isPhoneOrSmaller => breakpoint == CommonBreakpoint.phone || breakpoint == CommonBreakpoint.tinyHardware;
-  bool get isPhone => breakpoint == CommonBreakpoint.phone;
-  bool get isPhoneOrLarger => breakpoint != CommonBreakpoint.tinyHardware;
+  bool get isPhoneOrSmaller => matchesValueOrSmaller(CommonBreakpoint.phone);
+  bool get isPhone => matchesValue(CommonBreakpoint.phone);
+  bool get isPhoneOrLarger => matchesValueOrLarger(CommonBreakpoint.phone);
 
-  bool get isTabletOrSmaller => breakpoint != CommonBreakpoint.desktop;
-  bool get isTablet => breakpoint == CommonBreakpoint.tablet;
-  bool get isTabletOrLarger => breakpoint != CommonBreakpoint.phone && breakpoint != CommonBreakpoint.tinyHardware;
+  bool get isTabletOrSmaller => matchesValueOrSmaller(CommonBreakpoint.tablet);
+  bool get isTablet => matchesValue(CommonBreakpoint.tablet);
+  bool get isTabletOrLarger => matchesValueOrLarger(CommonBreakpoint.tablet);
 
-  bool get isDesktop => breakpoint == CommonBreakpoint.desktop;
+  bool get isDesktop => matchesValue(CommonBreakpoint.desktop);
 
-  T layoutValue<T>({
+  T value<T>({
     T? desktop,
     T? tablet,
     T? phone,
@@ -79,27 +41,31 @@ extension CommonLayoutValue on BuildContext {
       throw 'At least one breakpoint must be provided';
     }
 
-    // If it's in the exact range and has a layout supplied, try to use it,
-    // otherwise cascade down all the available values
-    if (desktop != null && breakpoint == CommonBreakpoint.desktop) {
+    // If it's in the exact range and has a layout supplied, try to use it...
+    if (desktop != null && breakpointValue == CommonBreakpoint.desktop) {
       return desktop;
-    } else if (tablet != null && breakpoint == CommonBreakpoint.tablet) {
+    } else if (tablet != null && breakpointValue == CommonBreakpoint.tablet) {
       return tablet;
-    } else if (phone != null && breakpoint == CommonBreakpoint.phone) {
+    } else if (phone != null && breakpointValue == CommonBreakpoint.phone) {
       return phone;
     } else if (tinyHardware != null) {
       return tinyHardware;
     }
-
-     // Get the largest non-null layout supplied
-      if (desktop != null) {
-        return desktop;
-      } else if (tablet != null) {
-        return tablet;
-      } else if (phone != null) {
-        return phone;
-      } else {
-        return tinyHardware!;
-      }
+    // ... otherwise cascade down all the available values to get the largest
+    // non-null layout supplied
+    if (desktop != null) {
+      return desktop;
+    } else if (tablet != null) {
+      return tablet;
+    } else if (phone != null) {
+      return phone;
+    } else {
+      return tinyHardware!;
+    }
   }
+}
+
+// Widget Utility
+extension CommonResolverWidget on BuildContext {
+  CommonLayout get layout => LayoutResolverWidget.of(this).resolver as CommonLayout;
 }

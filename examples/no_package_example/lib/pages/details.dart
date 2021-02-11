@@ -6,6 +6,8 @@ class DetailsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final layout = context.layout;
+
     final showText = 'Show Snack';
     final showIcon = Icon(Icons.message);
 
@@ -18,33 +20,35 @@ class DetailsPage extends StatelessWidget {
     final desktopButton = OutlinedButton.icon(onPressed: () => _displaySnackbar(context), icon: showIcon, label: Text(showText),);
     
     final pageTitle = 'Hybrid Details';
-
+    
     return Scaffold(
-      appBar: context.isTabletOrSmaller ? AppBar(
+      appBar: layout.isTabletOrSmaller ? AppBar(
         title: Text(pageTitle),
       ) : null,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            if (context.isDesktop) Padding(
+          children: [
+            if (layout.isDesktop) Padding(
               padding: const EdgeInsets.only(bottom: 40),
               child: Text(pageTitle, style: Theme.of(context).textTheme.headline3,),
             ),
             Text(
               'This is a responsive text!',
-              style: context.isPhoneOrSmaller ? Theme.of(context).textTheme.headline6 : Theme.of(context).textTheme.headline5,
+              style: layout.isPhoneOrSmaller ? Theme.of(context).textTheme.headline6 : Theme.of(context).textTheme.headline5,
             ),
-            if (context.isTabletOrLarger) desktopButton,
+            if (layout.isTabletOrLarger) desktopButton,
           ],
         ),
       ),
-      floatingActionButton: context.isPhoneOrSmaller ? mobileFab : null,
+      floatingActionButton: layout.isPhoneOrSmaller ? mobileFab : null,
     );
   }
 
   void _displaySnackbar(BuildContext context) {
-    final snackBarTextStyle = context.isPhoneOrSmaller ? Theme.of(context).textTheme.bodyText2 : Theme.of(context).textTheme.subtitle1;
+    final layout = context.layout;
+
+    final snackBarTextStyle = layout.isPhoneOrSmaller ? Theme.of(context).textTheme.bodyText2 : Theme.of(context).textTheme.subtitle1;
 
     final snackBarText = Text('A responsive text inside the SnackBar!', style: snackBarTextStyle?.copyWith(color: Colors.white));
     final snackBar = SnackBar(content: snackBarText);
