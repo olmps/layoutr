@@ -1,8 +1,8 @@
-name: responsive_layout
-description: A new Flutter package project.
+name: layoutr
+description: Succinct utilities to help doing responsive layouts with less verbosity
 version: 1.0.0-nullsafety.0
-repository: https://github.com/olmps/strict
-issue_tracker: https://github.com/olmps/strict/issues
+repository: https://github.com/olmps/layoutr
+issue_tracker: https://github.com/olmps/layoutr/issues
 
 environment:
   sdk: ">=2.12.0-0 <3.0.0"
@@ -12,6 +12,13 @@ dependencies:
   flutter:
     sdk: flutter
 
+  meta: ^1.3.0
+
 dev_dependencies:
+  flutter_driver:
+    sdk: flutter
   flutter_test:
     sdk: flutter
+  integration_test: ^1.0.0
+
+  strict: ^1.0.0-nullsafety

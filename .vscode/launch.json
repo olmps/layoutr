@@ -1,0 +1,47 @@
+{
+  "version": "0.3.0",
+  "configurations": [
+    {
+      "name": "Common Layout | Inherited Widget",
+      "type": "dart",
+      "request": "launch",
+      "program": "example/lib/common_layout/inherited_widget.dart",
+    },
+    {
+      "name": "Common Layout | Override Inherited Widget",
+      "type": "dart",
+      "request": "launch",
+      "program": "example/lib/common_layout/override_inherited_widget.dart",
+    },
+    {
+      "name": "Custom Layout",
+      "type": "dart",
+      "request": "launch",
+      "program": "example/lib/custom_layout/main.dart",
+    },
+    {
+      "name": "Granular Layout | Override Inherited Widget",
+      "type": "dart",
+      "request": "launch",
+      "program": "example/lib/granular_layout/override_inherited_widget.dart",
+    },
+    {
+      "name": "Granular Layout | Override Inherited Widget",
+      "type": "dart",
+      "request": "launch",
+      "program": "example/lib/granular_layout/override_inherited_widget.dart",
+    },
+    {
+      "name": "Provider",
+      "type": "dart",
+      "request": "launch",
+      "program": "example/lib/provider.dart",
+    },
+    {
+      "name": "Riverpod",
+      "type": "dart",
+      "request": "launch",
+      "program": "example/lib/river_pod.dart",
+    },
+  ]
+}
