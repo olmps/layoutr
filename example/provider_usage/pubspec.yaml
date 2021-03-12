@@ -1,0 +1,21 @@
+name: provider_usage
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=2.12.0 <3.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  layoutr:
+    path: ../../
+
+  provider: ^5.0.0
+
+dev_dependencies:
+  strict: ^1.0.0-nullsafety
+
+flutter:
+  uses-material-design: true

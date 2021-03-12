@@ -23,8 +23,23 @@ Even though the magic should happen inside the abstract `LayoutResolver`, we nee
 But that's not any reason to not have built-in Layout Resolvers, and these will probably fit the most generic use-cases. To exemplify the resolvers, we can see how the `CommonLayout` works.
 
 #### Exemplifying with CommonLayout
+---
 
-The `CommonLayout` is split in 4 breakpoints: `desktop`, `tablet`, `phone` and `tinyHardware`. A simple usage of returning a responsive `Text` widget that has both its value and style customized based on the current device's constraints may be done like the below:
+Before diving into the concepts, you have to make sure to provide a `CommonLayout` for your widgets. This can be done
+in multiple different ways, although the easiest is to just wrap your top-most widget in the `CommonLayoutWidget`:
+
+```dart
+import 'package:layoutr/common_layout.dart';
+
+// ...
+CommonLayoutWidget(
+  child: /* My child, possibly a MaterialApp/WidgetsApp */,
+);
+// ...
+```
+
+Now, `CommonLayout` is split in 4 breakpoints: `desktop`, `tablet`, `phone` and `tinyHardware`. A simple usage of returning a responsive `Text` widget that has both its value and style customized based on the current device's constraints may be done like the below:
+
 ```dart
 import 'package:layoutr/common_layout.dart';
 
@@ -43,23 +58,9 @@ Widget build(BuildContext context) {
 // ...
 ```
 
-> You can see that there is no `tablet` supplied to the `layout.value`, and that is intended to exemplify a common scenario, where we may want to just provide two or three arguments - and that means not all possible scenarios are "covered" - and that's where the resolver comes in handy: if the **current breakpoint** value is not passed to `layout.value`, it will fallback to the "nearest" available one, fitting the most suitable layout for your particular value. This "nearest logic" can be confusing, but you can find out more how it works in `LayoutResolver.closestValue`
-
-Also, if you want to keep the structure but want to override the sizes of each breakpoint, you can provide your `CommonLayout` instance through the InheritedWidget called `CommonLayoutWidget`:
-
-```dart
-import 'package:layoutr/common_layout.dart';
-
-// ...
-
-CommonLayoutWidget(
-  resolver: CommonLayout(context.deviceWidth, desktop: 800),
-  child: /* My child */,
-);
-// ...
-```
-
-> You will probably want to add these above the top-most widget of your tree, usually the `MaterialApp`, but be careful that `MediaQuery` may not be available if you don't have any other widget above `CommonLayoutWidget`, which is required when we use the `context.deviceWidth`. You can check out an [`example/`](https://pub.dev/packages/layoutr/example#Common-Layout-Inherited-Widget) that overrides the custom values. 
+> **TLDR: all breakpoints don't need to be provided, the layout will automatically find the nearest suitable value for your current breakpoint.**
+> 
+> Long version: you can see that there is no `tablet` supplied to the `layout.value`, and that is intended to exemplify a common scenario, where we may want to just provide two or three arguments - and that means not all possible scenarios are "covered" - and that's where the resolver comes in handy: if the **current breakpoint** value is not passed to `layout.value`, it will fallback to the "nearest" available one, fitting the most suitable layout for your particular value. This "nearest logic" can be confusing, but you can find out more how it works in `LayoutResolver.closestValue`
 
 Other than `layout.value`, the `CommonLayout` provide utilities for simple boolean comparisons:
 
@@ -82,10 +83,7 @@ Widget build(BuildContext context) {
         children: [
           // And we wan't to have a custom title `AppBar` if the current layout is a tablet or smaller
           if (layout.isDesktop)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 40),
-              child: Text(pageTitle, style: Theme.of(context).textTheme.headline3),
-            ),
+            Text(pageTitle, style: Theme.of(context).textTheme.headline3),
           // ... the rest of the widget
         ],
       ),
@@ -95,20 +93,146 @@ Widget build(BuildContext context) {
 // ...
 ```
 
-Tip: we can easily use this package with common libraries like `provider` (see in [`example/`](https://pub.dev/packages/layoutr/example#`provider`)) and `river_pod` (see in [`example/`](https://pub.dev/packages/layoutr/example#`river_pod`)).
+##### Overriding `CommonLayout` resolver
+---
+
+To override the sizes for each breakpoint, you can provide your own `CommonLayout` instance:
+
+```dart
+import 'package:layoutr/common_layout.dart';
+// ...
+CommonLayoutWidget(
+  resolverBuilder: (constraints) => CommonLayout(constraints.maxWidth, desktop: 800, tablet: 520),
+  child: /* My child */,
+);
+// ...
+```
+
+> **TLDR: your app don't need to necessarily use `MaterialApp` (or `WidgetsApp`), just add it above your top-most widget.**
+> 
+> Long version: it's probably the best to add the resolver widget above the top-most widget of your tree, because the all built-in widgets use a `LayoutBuilder` to provide such responsive features, and this may create inconsistencies if they are created in nested widgets, which will only use the parent's `BoxConstraints`. This could also be useful if you wanted to created a resolver that is not necessarily related to the device's sizes, but I fail to see a useful scenario like this at the moment.
+
+##### Overriding `CommonLayout` spacings
+---
+To override the spacings for each breakpoint, you can provide your own `RawSpacings` instance:
+
+```dart
+import 'package:layoutr/common_layout.dart';
+// ...
+CommonLayoutWidget(
+  spacings: const RawSpacings(4, 12, 20, 24, 32, 40, 48, 56, 60),
+  child: /* My child */,
+);
+// ...
+```
+
+While the above will customize all spacings for all breakpoints, it's still not responsive, and that's fine. You may
+want to use the spacings for the sole benefit of type-safety utilities. Now if you also want them to be responsive,
+there is a constructor for that:
+
+```dart
+import 'package:layoutr/common_layout.dart';
+
+// ...
+CommonLayoutWidget.withResponsiveSpacings(
+  desktopSpacings: RawSpacings(8, 16, 24, 32, 40, 52, 60, 68, 80),
+  phoneSpacings: RawSpacings(4, 8, 12, 20, 28, 36, 40, 48, 60),
+  child: /* My child */,
+);
+// ...
+```
+
+Not sure what spacings mean? Check out [spacings](#spacings).
+
+----
+Tips:
+- we can easily use this package with common libraries like `provider` (see in [`example/`](example/provider_usage/)) and `river_pod` (see in [`example/`](example/river_pod_usage/`));
+- everything explained here is same for all built-in resolvers (like `GranularLayout`), they just differ in the
+breakpoints amount/types.
 
 #### Available Built-in `LayoutResolver`
-- `CommonLayout`: a resolver split in 4 breakpoints: `desktop`, `tablet`, `phone` and `tinyHardware`. Import this resolver through `package:layoutr/common_layout.dart` - (see in [`example/`](https://pub.dev/packages/layoutr/example#Common-Layout));
-- `GranularLayout`: a resolver split in 6 breakpoints: `xxLarge`, `xLarge`, `large`, `medium`, `small` and `xSmall`. Import this resolver through `package:layoutr/granular_layout.dart` - (see in [`example/`](https://pub.dev/packages/layoutr/example#Granular-Layout)).
+---
 
-### Custom `LayoutResolver`
+- `CommonLayout`: a resolver split in 4 breakpoints: `desktop`, `tablet`, `phone` and `tinyHardware`. Import this resolver through `package:layoutr/common_layout.dart` - (see in [`example/`](example/common_layout/));
+- `GranularLayout`: a resolver split in 6 breakpoints: `xxLarge`, `xLarge`, `large`, `medium`, `small` and `xSmall`. Import this resolver through `package:layoutr/granular_layout.dart` - (see in [`example/`](example/granular_layout/)).
 
-If the above built-in resolvers don't match the requirements, `LayoutResolver` can be customized by extending it, taking advantage of the utilities built-in in the abstract class itself. To extend the and implement your custom `LayoutResolver`, import `package:layoutr/layoutr.dart`. Check out a custom implementation example in the [`example/`](https://pub.dev/packages/layoutr/example#Custom-Layout).
+#### Custom `LayoutResolver`
+---
+
+If the above built-in resolvers don't match the requirements, `LayoutResolver` can be customized by extending it, taking advantage of the utilities built-in in the abstract class itself. To extend the and implement your custom `LayoutResolver`, import `package:layoutr/layoutr.dart`. Check out a custom implementation example in the [`example/`](example/custom_layout/).
+
+### Spacings
+
+All spacing features revolve around `Spacing` enumerator. These are named ranges that should usually fit most use-cases
+out there in the wild. They are pretty intuitive: `xxxSmall`, `xxSmall`, `xSmall`, `small`, `medium`, ... and so on.
+
+Spacings are an additional help for situations where we need type-safety, responsivity, or both. Being more specific:
+- type-safety: even if you don't want to use it as a responsive value, you will still benefit from having a type-safe
+system that will prevent inconsistent spacings, margins and paddings in your application;
+- responsivity: the spacings can be customized to one, some or all breakpoints, meaning that you won't have to change
+anything if you use the `Spacing` type system.
+
+All built-in `LayoutResolver` will provide the spacings out-of-the-box, so no need to add anything extra other than your root widget. But this might not be the best for most. If wanted, one could use only this package's feature alone (with `SpacingsInheritedWidget`), like so:
+
+```dart
+import 'package:layoutr/layoutr.dart';
+
+// ...
+LayoutBuilder(
+  builder: (context, constraints) {
+    // If we wanted, we could use this spacings type-safety/responsivity without the resolver themselves
+    final myCustomSpacings = constraints.maxWidth > 800
+        ? RawSpacings(16, 24, 32, 40, 52, 60, 68, 76, 80)
+        : RawSpacings(8, 12, 24, 32, 40, 48, 56, 64, 72);
+
+    return SpacingsInheritedWidget(
+      spacings: myCustomSpacings,
+      child: // ... ,
+    );
+  },
+);
+// ...
+```
+
+Alone this can be somewhat useful, but its potential is enhanced with the built-in utilities and resolvers
+widgets - you can even build your own by extending any `BuildContext`, `Widget` or any layout-related element.
+
+An example usage with some of the utilities:
+
+```dart
+import 'package:layoutr/layoutr.dart';
+
+// SpacingMixin just helps you to call spacings like `smallSpacing`, instead of `Spacing.smallSpacing`, making it
+// overall less verbose.
+class MyPage extends StatelessWidget with SpacingMixin {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Column(
+        children: [
+          Text('My page'),
+          // Creates a vertical responsive/type-safe spacing
+          context.verticalBox(xxxLargeSpacing), 
+          Container(
+            // Creates a vertical symmetrical insets responsive/type-safe spacing
+            margin: context.symmetricInsets(vertical: smallSpacing),
+            color: Colors.amber,
+            // Wraps this widget in a Padding with all insets to this responsive/type-safe spacing
+            child: Placeholder().withAllPadding(context, mediumSpacing),
+          ),
+        ],
+      ),
+    );
+  }
+}
+```
 
 ### Utilities
 
-- Syntax-sugar for common use-cases, like: `deviceWidth` and `deviceHeight` (plus a couple more that are WIP);
-- Other helper Widgets are WIP.
+- Syntax-sugar for common use-cases, like: `deviceWidth` and `deviceHeight`;
+- [Helpers] for commonly used elements like `EdgeInsets` and `Padding`, using `Spacing`.
+
+Check out all [spacing utilities](lib/src/utilities.dart).
 
 ## Reference OS Projects
 
@@ -118,12 +242,4 @@ WIP
 
 ## Contributing
 
-There is no rocket science to contributing to this project. Just open your issue or pull request if needed - but please be descriptive!
-
-To submit a PR, follow [these useful guidelines](https://gist.github.com/MarcDiethelm/7303312), respect the dartfmt lint (modifications/exceptions may be discussed), and create an awesome description so we can understand it.
-
-Even though there is no "rules" to how you should contribute, there goes my quick tips on it:
-
-- If you're experiencing a bug that can be demonstrated visually, please take screenshots and post them alongside the issue;
-- For a quicker/seamless understanding of the issue, please post a sample project, so the evaluation will be bulletproof;
-- This is a git overall tip - do atomic commits with a descriptive message (no more than 50 characters is ideal).
+Want to contribute? Check it out [here](CONTRIBUTING.md).

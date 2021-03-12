@@ -1,7 +1,9 @@
-import 'package:flutter/widgets.dart';
 import 'package:layoutr/layoutr.dart';
 
-export 'layoutr.dart' show BuildContextUtilities;
+import 'package:flutter/widgets.dart';
+
+export 'layoutr.dart'
+    show BuildContextUtilities, SpacingMixin, SpacingHelpers, SpacingPaddingHelpers, Spacing, RawSpacings;
 
 enum CommonBreakpoint { desktop, tablet, phone, tinyHardware }
 
@@ -72,7 +74,7 @@ class CommonLayout extends LayoutResolver<CommonBreakpoint> {
   /// We will first check if there is a `phone`, then a `tinyHardware` provided. In this case, because both aren't
   /// available, we will have to get the smallest available from the remaining, in this case, returning the `tablet`s
   /// builder value.
-  T value<T>({
+  T value<T extends Object>({
     T Function()? desktop,
     T Function()? tablet,
     T Function()? phone,
@@ -89,30 +91,119 @@ class CommonLayout extends LayoutResolver<CommonBreakpoint> {
       if (tinyHardware != null) CommonBreakpoint.tinyHardware: tinyHardware(),
     });
   }
+
+  /// Proxies the call to [value] but allows all arguments to be `null`
+  ///
+  /// When not a single argument is non-nullable, instead of throwing, returns a `null` instead.
+  T? maybeValue<T extends Object>({
+    T Function()? desktop,
+    T Function()? tablet,
+    T Function()? phone,
+    T Function()? tinyHardware,
+  }) {
+    if (desktop == null && tablet == null && phone == null && tinyHardware == null) {
+      return null;
+    }
+
+    return value(desktop: desktop, tablet: tablet, phone: phone, tinyHardware: tinyHardware);
+  }
 }
 
-class CommonLayoutWidget extends InheritedWidget {
-  const CommonLayoutWidget({
-    required this.resolver,
-    required Widget child,
-    Key? key,
-  }) : super(key: key, child: child);
+/// Provides its [child] with both [CommonLayout] and the breakpoint-specific [RawSpacings]
+///
+/// All [RawSpacings] are optional and if none is provided, it uses the default values found in
+/// [SpacingsInheritedWidget.defaultSpacings].
+/// These spacings act like an auxiliar set of fields that:
+/// - help the related code to be less prone to hardcoded values (provides type-safety with the usage of [Spacing]);
+/// - alongside the provided utilities, makes handling spacings less verbose by handling the proxying the logic to this
+/// instance's resolver.
+///
+/// Because [CommonLayoutWidget] uses a `LayoutBuilder` to get its device constraints, no `MaterialApp` (or
+/// `MediaQueryData`) is required above/below this widget.
+class CommonLayoutWidget extends StatelessWidget {
+  /// Creates a `CommonLayoutWidget` with a single default [spacings] for all breakpoints
+  ///
+  /// If [spacings] argument is provided, all the respective breakpoint's spacings should be the same. If you want to
+  /// specify each breakpoint spacing, use the [CommonLayoutWidget.withResponsiveSpacings] constructor.
+  ///
+  /// To override with your own [CommonLayout], use the [resolverBuilder] argument.
+  const CommonLayoutWidget({required this.child, this.resolverBuilder, RawSpacings? spacings})
+      : desktopSpacings = spacings,
+        tabletSpacings = spacings,
+        phoneSpacings = spacings,
+        tinyHardwareSpacings = spacings;
 
-  final CommonLayout resolver;
+  /// Creates a `CommonLayoutWidget` with specified breakpoints spacings
+  ///
+  /// If not all spacings are provided, it uses the same [CommonLayout.value] logic to pick the closest and most
+  /// suitable. If you want to a single spacing for all breakpoints, use the default constructor.
+  ///
+  /// To override with your own [CommonLayout], use the [resolverBuilder] argument.
+  const CommonLayoutWidget.withResponsiveSpacings({
+    required this.child,
+    this.resolverBuilder,
+    this.desktopSpacings,
+    this.tabletSpacings,
+    this.phoneSpacings,
+    this.tinyHardwareSpacings,
+  });
+
+  /// Provides a `BoxConstraints` to build this widget's resolver
+  final CommonLayout Function(BoxConstraints deviceConstraints)? resolverBuilder;
+
+  /// Spacings corresponding to the [CommonBreakpoint.desktop]
+  final RawSpacings? desktopSpacings;
+
+  /// Spacings corresponding to the [CommonBreakpoint.tablet]
+  final RawSpacings? tabletSpacings;
+
+  /// Spacings corresponding to the [CommonBreakpoint.phone]
+  final RawSpacings? phoneSpacings;
+
+  /// Spacings corresponding to the [CommonBreakpoint.tinyHardware]
+  final RawSpacings? tinyHardwareSpacings;
+
+  final Widget child;
 
   @override
-  bool updateShouldNotify(CommonLayoutWidget oldWidget) => oldWidget.resolver != resolver;
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final resolver = resolverBuilder?.call(constraints) ?? CommonLayout(constraints.maxWidth);
 
-  /// The resolver (`CommonLayout`) from the closest [CommonLayoutWidget] instance that encloses the given [context].
-  ///
-  /// If no ancestor is found, defaults to a new [CommonLayout] instance using the `context.deviceWidth`.
+        // Applies the same logic of `closestValue` to the spacings, because not all may be provided
+        final spacings = resolver.maybeValue(
+          desktop: desktopSpacings != null ? () => desktopSpacings! : null,
+          tablet: tabletSpacings != null ? () => tabletSpacings! : null,
+          phone: phoneSpacings != null ? () => phoneSpacings! : null,
+          tinyHardware: tinyHardwareSpacings != null ? () => tinyHardwareSpacings! : null,
+        );
+
+        return LayoutResolverInheritedWidget(
+          resolver: resolver,
+          child: SpacingsInheritedWidget(spacings: spacings, child: child),
+        );
+      },
+    );
+  }
+
+  /// The resolver (`CommonLayout`) from the closest [CommonLayoutWidget] instance that encloses the given
+  /// [context].
   static CommonLayout of(BuildContext context) {
-    final resolverAncestor = context.dependOnInheritedWidgetOfExactType<CommonLayoutWidget>();
+    final resolverAncestor = context.dependOnInheritedWidgetOfExactType<LayoutResolverInheritedWidget>();
 
-    // TODO(matuella): Is it returning an optional because it's not available in the ancestors, or for some other
-    // reason?
-    // Commented in https://github.com/flutter/flutter/issues/73423, let's see how it turns out.
-    return resolverAncestor?.resolver ?? CommonLayout(context.deviceWidth);
+    if (resolverAncestor == null) {
+      throw StateError('No ancestor with `LayoutResolverInheritedWidget` (of type CommonLayout)');
+    }
+
+    final resolver = resolverAncestor.resolver;
+    if (resolver is! CommonLayout) {
+      throw StateError(
+        'Found `LayoutResolverInheritedWidget` ancestor of type ${resolver.runtimeType}. Expected a `CommonLayout`.',
+      );
+    }
+
+    return resolver;
   }
 }
 

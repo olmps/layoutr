@@ -2,46 +2,40 @@
   "version": "0.3.0",
   "configurations": [
     {
-      "name": "Common Layout | Inherited Widget",
+      "name": "Common Layout",
       "type": "dart",
       "request": "launch",
-      "program": "example/lib/common_layout/inherited_widget.dart",
-    },
-    {
-      "name": "Common Layout | Override Inherited Widget",
-      "type": "dart",
-      "request": "launch",
-      "program": "example/lib/common_layout/override_inherited_widget.dart",
+      "program": "example/common_layout/lib/main.dart",
     },
     {
       "name": "Custom Layout",
       "type": "dart",
       "request": "launch",
-      "program": "example/lib/custom_layout/main.dart",
+      "program": "example/custom_layout/lib/main.dart",
     },
     {
-      "name": "Granular Layout | Override Inherited Widget",
+      "name": "Granular Layout",
       "type": "dart",
       "request": "launch",
-      "program": "example/lib/granular_layout/override_inherited_widget.dart",
+      "program": "example/granular_layout/lib/main.dart",
     },
     {
-      "name": "Granular Layout | Override Inherited Widget",
+      "name": "Provider Usage",
       "type": "dart",
       "request": "launch",
-      "program": "example/lib/granular_layout/override_inherited_widget.dart",
+      "program": "example/provider_usage/lib/main.dart",
     },
     {
-      "name": "Provider",
+      "name": "Riverpod Usage",
       "type": "dart",
       "request": "launch",
-      "program": "example/lib/provider.dart",
+      "program": "example/river_pod_usage/lib/main.dart",
     },
     {
-      "name": "Riverpod",
+      "name": "Split View",
       "type": "dart",
       "request": "launch",
-      "program": "example/lib/river_pod.dart",
+      "program": "example/split_view/lib/main.dart",
     },
   ]
 }

@@ -7,6 +7,9 @@ import 'package:meta/meta.dart';
 ///   applications;
 ///   - `GranularLayout` - a more granular set of breakpoints, recommended when there are many different layout
 ///   "behaviors".
+///
+/// Note: even though you can pass a list of [breakpoints] that have the same [Breakpoint.value], it's not recommended
+/// because the logic might get really confusing, given what the [LayoutResolver] API proposes to do.
 @immutable
 abstract class LayoutResolver<T> {
   LayoutResolver({required this.size, required List<Breakpoint<T>> breakpoints})
@@ -31,22 +34,26 @@ abstract class LayoutResolver<T> {
   /// `true` if [match] is associated with a corresponding [Breakpoint] that is exactly or smaller than the current
   /// [breakpointValue]
   ///
+  /// If distinct [Breakpoint]s have the same value, only the largest (first) match will be used for comparison.
+  ///
   /// Throws an `ArgumentError` if [match] doesn't exist in the [breakpoints]
-  bool matchesValueOrSmaller(T match) => breakpoint <= _firstBreapointWithValue(match);
+  bool matchesValueOrSmaller(T match) => breakpoint <= _firstBreakpointWithValue(match);
 
   /// `true` if [match] is associated with a corresponding [Breakpoint] that is exactly or larger than the current
   /// [breakpointValue]
   ///
+  /// If distinct [Breakpoint]s have the same value, only the largest (first) match will be used for comparison.
+  ///
   /// Throws an `ArgumentError` if [match] doesn't exist in the [breakpoints]
-  bool matchesValueOrLarger(T match) => breakpoint >= _firstBreapointWithValue(match);
+  bool matchesValueOrLarger(T match) => breakpoint >= _firstBreakpointWithValue(match);
 
   /// `true` if [match] is equals to [breakpointValue]
   bool matchesValue(T match) => breakpointValue == match;
 
-  Breakpoint<T> _firstBreapointWithValue(T value) => breakpoints.firstWhere(
+  Breakpoint<T> _firstBreakpointWithValue(T value) => breakpoints.firstWhere(
         (breakpoint) => breakpoint.value == value,
         orElse: () {
-          throw ArgumentError.value(value, null, 'Invalid breakpoint argument');
+          throw ArgumentError.value(value, null, 'No existing breakpoint with the compared value');
         },
       );
 
@@ -107,7 +114,12 @@ abstract class LayoutResolver<T> {
   /// - Is there a value `'BP300'` available? No;
   /// - Is there a value `'BP400'` available? Yes.
   @protected
-  U closestValue<U>(Map<T, U> breakpointsMap) {
+  @visibleForTesting
+  U closestValue<U extends Object>(Map<T, U> breakpointsMap) {
+    if (breakpointsMap.isEmpty) {
+      throw ArgumentError('The provided map cannot be empty');
+    }
+
     final breakpointsValues = breakpoints.map((breakpoint) => breakpoint.value).toSet();
     // TODO(matuella): Why this isn't the `Set.containsAll` working?
     // if (breakpointsValues.containsAll(breakpointsMap.keys.toSet())) {
@@ -147,7 +159,7 @@ class Breakpoint<T> implements Comparable<Breakpoint<T>> {
 
   /// Raw representation of this breakpoint
   ///
-  /// May be `null` if this breakpoint is the representation of the smallest fallback value
+  /// Should be `null` only if this instance represents the smallest breakpoint possible
   final int? size;
 
   /// Associated value with this breakpoint

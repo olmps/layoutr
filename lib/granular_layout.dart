@@ -1,7 +1,8 @@
 import 'package:flutter/widgets.dart';
 import 'package:layoutr/layoutr.dart';
 
-export 'layoutr.dart' show BuildContextUtilities;
+export 'layoutr.dart'
+    show BuildContextUtilities, SpacingMixin, SpacingHelpers, SpacingPaddingHelpers, Spacing, RawSpacings;
 
 enum GranularBreakpoint { xxLarge, xLarge, large, medium, small, xSmall }
 
@@ -105,7 +106,7 @@ class GranularLayout extends LayoutResolver<GranularBreakpoint> {
   /// We will first check, respectively, if there is a `medium`, `small`, then a `xSmall` provided. In this case,
   /// because none is available, we will have to get the smallest available from the remaining, in this case, returning
   /// the `large`s builder value, the smallest of the available supplied builders.
-  T value<T>({
+  T value<T extends Object>({
     T Function()? xxLarge,
     T Function()? xLarge,
     T Function()? large,
@@ -126,30 +127,133 @@ class GranularLayout extends LayoutResolver<GranularBreakpoint> {
       if (xSmall != null) GranularBreakpoint.xSmall: xSmall(),
     });
   }
+
+  /// Proxies the call to [value] but allows all arguments to be `null`
+  ///
+  /// When not a single argument is non-nullable, instead of throwing, returns a `null` instead.
+  T? maybeValue<T extends Object>({
+    T Function()? xxLarge,
+    T Function()? xLarge,
+    T Function()? large,
+    T Function()? medium,
+    T Function()? small,
+    T Function()? xSmall,
+  }) {
+    if (xxLarge == null && xLarge == null && large == null && medium == null && small == null && xSmall == null) {
+      return null;
+    }
+
+    return value(xxLarge: xxLarge, xLarge: xLarge, large: large, medium: medium, small: small, xSmall: xSmall);
+  }
 }
 
-class GranularLayoutWidget extends InheritedWidget {
-  const GranularLayoutWidget({
-    required this.resolver,
-    required Widget child,
-    Key? key,
-  }) : super(key: key, child: child);
+/// Provides its [child] with both [GranularLayout] and the breakpoint-specific [RawSpacings]
+///
+/// All [RawSpacings] are optional and if none is provided, it uses the default values found in
+/// [SpacingsInheritedWidget.defaultSpacings].
+/// These spacings act like an auxiliar set of fields that:
+/// - help the related code to be less prone to hardcoded values (provides type-safety with the usage of [Spacing]);
+/// - alongside the provided utilities, makes handling spacings less verbose by handling the proxying the logic to this
+/// instance's resolver.
+///
+/// Because [GranularLayoutWidget] uses a `LayoutBuilder` to get its device constraints, no `MaterialApp` (or
+/// `MediaQueryData`) is required above/below this widget.
+class GranularLayoutWidget extends StatelessWidget {
+  /// Creates a `GranularLayoutWidget` with a single default [spacings] for all breakpoints
+  ///
+  /// If [spacings] argument is provided, all the respective breakpoint's spacings should be the same. If you want to
+  /// specify each breakpoint spacing, use the [GranularLayoutWidget.withResponsiveSpacings] constructor.
+  ///
+  /// To override with your own [GranularLayout], use the [resolverBuilder] argument.
+  const GranularLayoutWidget({required this.child, this.resolverBuilder, RawSpacings? spacings})
+      : xxLargeSpacings = spacings,
+        xLargeSpacings = spacings,
+        largeSpacings = spacings,
+        mediumSpacings = spacings,
+        smallSpacings = spacings,
+        xSmallSpacings = spacings;
 
-  final GranularLayout resolver;
+  /// Creates a `GranularLayoutWidget` with specified breakpoints spacings
+  ///
+  /// If not all spacings are provided, it uses the same [GranularLayout.value] logic to pick the closest and most
+  /// suitable. If you want to a single spacing for all breakpoints, use the default constructor.
+  ///
+  /// To override with your own [GranularLayout], use the [resolverBuilder] argument.
+  const GranularLayoutWidget.withResponsiveSpacings({
+    required this.child,
+    this.resolverBuilder,
+    this.xxLargeSpacings,
+    this.xLargeSpacings,
+    this.largeSpacings,
+    this.mediumSpacings,
+    this.smallSpacings,
+    this.xSmallSpacings,
+  });
+
+  /// Provides a `BoxConstraints` to build this widget's resolver
+  final GranularLayout Function(BoxConstraints deviceConstraints)? resolverBuilder;
+
+  /// Spacings corresponding to the [GranularBreakpoint.xxLarge]
+  final RawSpacings? xxLargeSpacings;
+
+  /// Spacings corresponding to the [GranularBreakpoint.xLarge]
+  final RawSpacings? xLargeSpacings;
+
+  /// Spacings corresponding to the [GranularBreakpoint.large]
+  final RawSpacings? largeSpacings;
+
+  /// Spacings corresponding to the [GranularBreakpoint.medium]
+  final RawSpacings? mediumSpacings;
+
+  /// Spacings corresponding to the [GranularBreakpoint.small]
+  final RawSpacings? smallSpacings;
+
+  /// Spacings corresponding to the [GranularBreakpoint.xSmall]
+  final RawSpacings? xSmallSpacings;
+
+  final Widget child;
 
   @override
-  bool updateShouldNotify(GranularLayoutWidget oldWidget) => oldWidget.resolver != resolver;
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final resolver = resolverBuilder?.call(constraints) ?? GranularLayout(constraints.maxWidth);
 
-  /// The resolver (`GranularLayout`) from the closest [GranularLayoutWidget] instance that encloses the given [context].
-  ///
-  /// If no ancestor is found, defaults to a new [GranularLayout] instance using the `context.deviceWidth`.
+        // Applies the same logic of `closestValue` to the spacings, because not all may be provided
+        final spacings = resolver.value(
+          xxLarge: xxLargeSpacings != null ? () => xxLargeSpacings! : null,
+          xLarge: xLargeSpacings != null ? () => xLargeSpacings! : null,
+          large: largeSpacings != null ? () => largeSpacings! : null,
+          medium: mediumSpacings != null ? () => mediumSpacings! : null,
+          small: smallSpacings != null ? () => smallSpacings! : null,
+          xSmall: xSmallSpacings != null ? () => xSmallSpacings! : null,
+        );
+
+        return LayoutResolverInheritedWidget(
+          resolver: resolver,
+          child: SpacingsInheritedWidget(spacings: spacings, child: child),
+        );
+      },
+    );
+  }
+
+  /// The resolver (`GranularLayout`) from the closest [GranularLayoutWidget] instance that encloses the given
+  /// [context].
   static GranularLayout of(BuildContext context) {
-    final resolverAncestor = context.dependOnInheritedWidgetOfExactType<GranularLayoutWidget>();
+    final resolverAncestor = context.dependOnInheritedWidgetOfExactType<LayoutResolverInheritedWidget>();
 
-    // TODO(matuella): Is it returning an optional because it's not available in the ancestors, or for some other
-    // reason?
-    // Commented in https://github.com/flutter/flutter/issues/73423, let's see how it turns out.
-    return resolverAncestor?.resolver ?? GranularLayout(context.deviceWidth);
+    if (resolverAncestor == null) {
+      throw StateError('No ancestor with `LayoutResolverInheritedWidget` (of type GranularLayout)');
+    }
+
+    final resolver = resolverAncestor.resolver;
+    if (resolver is! GranularLayout) {
+      throw StateError(
+        'Found `LayoutResolverInheritedWidget` ancestor of type ${resolver.runtimeType}. Expected a `GranularLayout`.',
+      );
+    }
+
+    return resolver;
   }
 }
 
